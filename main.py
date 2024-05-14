@@ -175,7 +175,7 @@ async def removeeffects(ctx: commands.Context, user: discord.Member):
 
 
 async def remove_all_effects(ctx, user):
-    await user.remove_roles(*user.roles[1:])  # Remove all roles except @everyone
+    await user.remove_roles(*user.roles[1:])
     overwrite = ctx.channel.overwrites_for(user)
     overwrite.send_messages = True
     await ctx.channel.set_permissions(user, overwrite=overwrite)
@@ -293,27 +293,21 @@ participants = set()
 @bot.hybrid_command()
 async def roulette(ctx: commands.Context):
 
-    # Reset participants set
     participants.clear()
 
-    # Message to prompt joining
     msg = await ctx.send("@here Be a man and join the roulette game! You have 15 seconds.")
 
-    # Add reaction for joining
     await msg.add_reaction("✅")
 
-    # Wait for reactions
-    await asyncio.sleep(15)  # Allow 15 seconds for players to join
+    await asyncio.sleep(15)
 
-    # Fetch message again to get reactions
     msg = await ctx.channel.fetch_message(msg.id)
-    participants.clear()  # Clear the participants set
+    participants.clear()
 
-    # Collect participants who reacted
     for reaction in msg.reactions:
         if str(reaction.emoji) == "✅":
             async for user in reaction.users():
-                if user != bot.user:  # Exclude the bot
+                if user != bot.user:
                     participants.add(user)
 
     if len(participants) >= 2:
@@ -327,13 +321,11 @@ async def roulette_round(ctx: commands.Context):
         # Randomly select a participant
         loser = random.choice(list(participants))
 
-        # Roll for timeout
         if random.randint(1, 6) == 1:
-            asyncio.create_task(timeout_player(ctx, loser))  # Start timeout task concurrently
+            asyncio.create_task(timeout_player(ctx, loser))
             participants.remove(loser)
             await ctx.send(f"BANG!!!!💥💥💥⚰️ {loser.mention}")
 
-        # Check if only one participant is left after each round
         if len(participants) == 1:
             winner = participants.pop()
             await ctx.send(f"{winner.mention} is the last one standing! The roulette game is over.")
@@ -360,7 +352,6 @@ async def timeout_player(ctx: commands.Context, player: discord.Member):
 @bot.hybrid_command(name='fuckawake', help='Bans a player. Only executable by Lacking.')
 @commands.check(lambda ctx: ctx.author.name == "lacking8008")
 async def ban(ctx, player: discord.Member):
-    # Your ban logic here
     await player.ban()
     await ctx.send(f"{player.display_name} has been banned.")
 
@@ -482,33 +473,26 @@ async def on_message(message):
         author = message.author
         channel = message.channel
 
-        # Check if the author is a bot or the message was sent in a DM
         if author.bot or isinstance(channel, discord.DMChannel):
             return
 
-        # Check if the author has the necessary permissions to mention everyone
         if not message.author.guild_permissions.mention_everyone:
             return
 
-        # Convert async_generator to list and filter recent messages
         recent_messages = [msg async for msg in channel.history(limit=SPAM_THRESHOLD)]
 
-        # Ensure both datetimes are timezone-naive
         utc_now = datetime.datetime.utcnow().replace(tzinfo=None)
         spam_count = sum(1 for m in recent_messages if m.author == author and "@everyone" in m.content and (
                     utc_now - m.created_at.replace(tzinfo=None)).total_seconds() <= SPAM_INTERVAL)
 
-        # Check if spam count exceeds threshold
         if spam_count >= SPAM_THRESHOLD:
             overwrite = channel.overwrites_for(author)
             overwrite.send_messages = False
             await channel.set_permissions(author, overwrite=overwrite)
             await channel.send(f"{author.mention} SHUT UP.")
 
-            # Wait for 3 minutes
             await asyncio.sleep(180)
 
-            # Restore chat privileges
             overwrite.send_messages = True
             await channel.set_permissions(author, overwrite=overwrite)
             await channel.send(f"{author.mention} dont spam again")
